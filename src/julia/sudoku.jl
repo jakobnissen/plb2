@@ -1,9 +1,11 @@
 # adapted from plb/sudoku/sudoku_v1.jl
 # the old version is incompatible with the latest Julia
 
+using StaticArrays
+
 function sd_genmat()
-	C = Array{Int16}(undef, 4, 729)
-	R = Array{Int16}(undef, 9, 324)
+	C = MMatrix{4, 729, Int16}(undef)
+	R = MMatrix{9, 324, Int16}(undef)
 	r = 1
 	for i = 0:8, j = 0:8, k = 0:8
 		C[1,r] = 9 * i + j + 1
@@ -61,24 +63,25 @@ function revert(R,C,sr,sc,r)
 end
 function sd_solve(R,C,_s)
 	hints = 0
-	out = zeros(UInt8, 81)
-	sr = zeros(Int8, 729)
-	sc = fill(0x9, 324)
-	cr = zeros(Int8, 81)
-	cc = zeros(Int16, 81)
+	out = zeros(MVector{81, UInt8})
+	sr = zeros(MVector{729, Int8})
+	sc = fill!(MVector{324, UInt8}(undef), 0x09)
+	cr = zeros(MVector{81, Int8})
+	cc = zeros(MVector{81, Int16})
 	@inbounds for i = 1:81
-		a = isdigit(_s[i]) ? _s[i]-'1' : -1
+		cu = codeunits(_s)
+		a = in(cu[i], 0x30:0x39) ? Int(cu[i] - 0x31) : -1
 		if a >= 0 
 			sd_update(R,C,sr,sc,(i-1)*9+a+1)
 			hints += 1
 		end
-		out[i] = a + 1
+		out[i] = (a + 1) % eltype(out)
 	end
-	i, d, cand = 1, 1, 10<<16|0
+	i, d, cand = 1, one(eltype(cr)), 10<<16|0
 	@inbounds while true
 		while i >= 1 && i < 82 - hints
 			if d == 1 
-				m, cc[i] = cand>>16, (cand&0xffff)+1
+				m, cc[i] = cand>>16, ((cand & 0xffff) + one(cand)) % eltype(cc)
 				if m > 1
 					for c = 1:324
 						if sc[c] < m
@@ -93,11 +96,11 @@ function sd_solve(R,C,_s)
 				end
 			end
 			c = cc[i]
-			r2 = cr[i]+1
+			r2 = cr[i]+one(eltype(cr))
 			d == 0 && cr[i] >= 1 && revert(R,C,sr,sc,R[r2-1,c])
 			for rr = r2:9
 				sr[R[rr,c]] == 0 && break
-				r2 += 1
+				r2 += one(r2)
 			end
 			if r2 < 10
 				cand = sd_update(R,C,sr,sc,R[r2,c])
@@ -113,13 +116,13 @@ function sd_solve(R,C,_s)
 			r = R[cr[j],cc[j]] - 1
 			out[div(r,9)+1] = r%9+1
 		end
-		println(join(out, ""))
+		#println(join(out, ""))
 		i -= 1
 		d = 0
 	end
 	return out
 end
-hard20 = [
+const hard20 = [
 	"..............3.85..1.2.......5.7.....4...1...9.......5......73..2.1........4...9",
 	".......12........3..23..4....18....5.6..7.8.......9.....85.....9...4.5..47...6...",
 	".2..5.7..4..1....68....3...2....8..3.4..2.5.....6...1...2.9.....9......57.4...9..",
@@ -146,8 +149,8 @@ function main(n)
 	for i = 1:n
 		for str in hard20
 			r = sd_solve(R, C, str)
-			println()
+			#println()
 		end
 	end
 end
-main(200)
+#main(200)
