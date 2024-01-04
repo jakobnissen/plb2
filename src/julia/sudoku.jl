@@ -23,20 +23,20 @@ end
 function sd_update(R,C,sr,sc,r)
 	m = 10
 	m_c = 0
-	for c2 = 1:4
+	@inbounds for c2 = 1:4
 		sc[C[c2,r]] |= 128
 	end
- 	for c2 = 1:4
+ 	@inbounds for c2 = 1:4
  		c = C[c2,r]
 		for r2 = 1:9
 			rr = R[r2,c] #10
 			t = sr[rr] #11
-			sr[rr] += 1
+			sr[rr] += one(eltype(sr))
 			t != 0 && continue
 			for cc2 = 1:4
 				cc = C[cc2,rr] #15
-				if (sc[cc] -= 1) < m #16
-					m = Int(sc[cc]) # TODO
+				if (sc[cc] -= one(eltype(sc))) < m #16
+					m = Int(sc[cc])
 					m_c = cc-1
 				end
 			end
@@ -45,16 +45,16 @@ function sd_update(R,C,sr,sc,r)
  	return m<<16|m_c
 end
 function revert(R,C,sr,sc,r)
-	for c2 = 1:4
+	@inbounds for c2 = 1:4
 		sc[C[c2,r]] &= 127
 	end
- 	for c2 = 1:4
+	@inbounds for c2 = 1:4
  		c = C[c2,r]
 		for r2 = 1:9 
 			rr = R[r2,c]
-			(sr[rr] -= 1) != 0 && continue #9
+			(sr[rr] -= one(eltype(sr))) != 0 && continue #9
 			for i = 1:4
-				sc[C[i,rr]] += 1 #11
+				sc[C[i,rr]] += one(eltype(sc)) #11
 			end
 		end
 	end
@@ -63,11 +63,10 @@ function sd_solve(R,C,_s)
 	hints = 0
 	out = zeros(UInt8, 81)
 	sr = zeros(Int8, 729)
-	sc = Array{UInt8}(undef, 324)
-	fill!(sc, 9)
+	sc = fill(0x9, 324)
 	cr = zeros(Int8, 81)
 	cc = zeros(Int16, 81)
-	for i = 1:81
+	@inbounds for i = 1:81
 		a = isdigit(_s[i]) ? _s[i]-'1' : -1
 		if a >= 0 
 			sd_update(R,C,sr,sc,(i-1)*9+a+1)
@@ -76,7 +75,7 @@ function sd_solve(R,C,_s)
 		out[i] = a + 1
 	end
 	i, d, cand = 1, 1, 10<<16|0
-	while true
+	@inbounds while true
 		while i >= 1 && i < 82 - hints
 			if d == 1 
 				m, cc[i] = cand>>16, (cand&0xffff)+1
