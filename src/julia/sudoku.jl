@@ -2,20 +2,20 @@
 # the old version is incompatible with the latest Julia
 
 function sd_genmat()
-	C = Array{Int}(undef, 729, 4)
-	R = Array{Int}(undef, 324, 9)
+	C = Array{Int}(undef, 4, 729)
+	R = Array{Int}(undef, 9, 324)
 	r = 1
 	for i = 0:8, j = 0:8, k = 0:8
-		C[r,1] = 9 * i + j + 1
-		C[r,2] = (div(i, 3)*3 + div(j, 3)) * 9 + k + 82
-		C[r,3] = 9 * i + k + 163
-		C[r,4] = 9 * j + k + 244
+		C[1,r] = 9 * i + j + 1
+		C[2,r] = (div(i, 3)*3 + div(j, 3)) * 9 + k + 82
+		C[3,r] = 9 * i + k + 163
+		C[4,r] = 9 * j + k + 244
 		r += 1
 	end
 	nr = ones(Int,324)
 	for r = 1:729, c = 1:4
-		k = C[r,c]
-		R[k,nr[k]] = r
+		k = C[c,r]
+		R[nr[k],k] = r
 		nr[k] += 1
 	end
 	return R,C
@@ -24,17 +24,17 @@ function sd_update(R,C,sr,sc,r)
 	m = 10
 	m_c = 0
 	for c2 = 1:4
-		sc[C[r,c2]] += 128
+		sc[C[c2,r]] += 128
 	end
  	for c2 = 1:4
- 		c = C[r,c2]
+ 		c = C[c2,r]
 		for r2 = 1:9
-			rr = R[c,r2] #10
+			rr = R[r2,c] #10
 			t = sr[rr] #11
 			sr[rr] += 1
 			t != 0 && continue
 			for cc2 = 1:4
-				cc = C[rr,cc2] #15
+				cc = C[cc2,rr] #15
 				if (sc[cc] -= 1) < m #16
 					m = sc[cc]
 					m_c = cc-1
@@ -46,15 +46,15 @@ function sd_update(R,C,sr,sc,r)
 end
 function revert(R,C,sr,sc,r)
 	for c2 = 1:4
-		sc[C[r,c2]] -= 128
+		sc[C[c2,r]] -= 128
 	end
  	for c2 = 1:4
- 		c = C[r,c2]
+ 		c = C[c2,r]
 		for r2 = 1:9 
-			rr = R[c,r2]
+			rr = R[r2,c]
 			(sr[rr] -= 1) != 0 && continue #9
 			for i = 1:4
-				sc[C[rr,i]] += 1 #11
+				sc[C[i,rr]] += 1 #11
 			end
 		end
 	end
@@ -95,13 +95,13 @@ function sd_solve(R,C,_s)
 			end
 			c = cc[i]
 			r2 = cr[i]+1
-			d == 0 && cr[i] >= 1 && revert(R,C,sr,sc,R[c,r2-1])
+			d == 0 && cr[i] >= 1 && revert(R,C,sr,sc,R[r2-1,c])
 			for rr = r2:9
-				sr[R[c,rr]] == 0 && break
+				sr[R[rr,c]] == 0 && break
 				r2 += 1
 			end
 			if r2 < 10
-				cand = sd_update(R,C,sr,sc,R[c,r2])
+				cand = sd_update(R,C,sr,sc,R[r2,c])
 				cr[i], d = r2, 1
 				i += 1
 			else
@@ -111,7 +111,7 @@ function sd_solve(R,C,_s)
 		end
 		i < 1 && break
 		for j = 1:(i-1)
-			r = R[cc[j],cr[j]] - 1
+			r = R[cr[j],cc[j]] - 1
 			out[div(r,9)+1] = r%9+1
 		end
 		println(join(out, ""))
