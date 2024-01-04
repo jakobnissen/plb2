@@ -2,8 +2,8 @@
 # the old version is incompatible with the latest Julia
 
 function sd_genmat()
-	C = Array{Int}(undef, 4, 729)
-	R = Array{Int}(undef, 9, 324)
+	C = Array{Int16}(undef, 4, 729)
+	R = Array{Int16}(undef, 9, 324)
 	r = 1
 	for i = 0:8, j = 0:8, k = 0:8
 		C[1,r] = 9 * i + j + 1
@@ -12,7 +12,7 @@ function sd_genmat()
 		C[4,r] = 9 * j + k + 244
 		r += 1
 	end
-	nr = ones(Int,324)
+	nr = ones(Int8,324)
 	for r = 1:729, c = 1:4
 		k = C[c,r]
 		R[nr[k],k] = r
@@ -24,7 +24,7 @@ function sd_update(R,C,sr,sc,r)
 	m = 10
 	m_c = 0
 	for c2 = 1:4
-		sc[C[c2,r]] += 128
+		sc[C[c2,r]] |= 128
 	end
  	for c2 = 1:4
  		c = C[c2,r]
@@ -36,7 +36,7 @@ function sd_update(R,C,sr,sc,r)
 			for cc2 = 1:4
 				cc = C[cc2,rr] #15
 				if (sc[cc] -= 1) < m #16
-					m = sc[cc]
+					m = Int(sc[cc]) # TODO
 					m_c = cc-1
 				end
 			end
@@ -46,7 +46,7 @@ function sd_update(R,C,sr,sc,r)
 end
 function revert(R,C,sr,sc,r)
 	for c2 = 1:4
-		sc[C[c2,r]] -= 128
+		sc[C[c2,r]] &= 127
 	end
  	for c2 = 1:4
  		c = C[c2,r]
@@ -61,12 +61,12 @@ function revert(R,C,sr,sc,r)
 end
 function sd_solve(R,C,_s)
 	hints = 0
-	out = zeros(Int, 81)
-	sr = zeros(Int, 729)
-	sc = Array{Int}(undef, 324)
+	out = zeros(UInt8, 81)
+	sr = zeros(Int8, 729)
+	sc = Array{UInt8}(undef, 324)
 	fill!(sc, 9)
-	cr = zeros(Int, 81)
-	cc = zeros(Int, 81)
+	cr = zeros(Int8, 81)
+	cc = zeros(Int16, 81)
 	for i = 1:81
 		a = isdigit(_s[i]) ? _s[i]-'1' : -1
 		if a >= 0 
